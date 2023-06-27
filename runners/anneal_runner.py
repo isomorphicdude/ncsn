@@ -402,7 +402,8 @@ class AnnealRunner():
                 all_samples = self.anneal_Langevin_dynamics(samples, score, sigmas, n_steps, lr)
             elif self.extra_args.sampler.lower() == 'rmsald':
                 beta = self.extra_args.beta
-                all_samples = self.anneal_rms_Langevin_dynamics(samples, score, sigmas, n_steps, lr, beta)
+                annealing = self.extra_args.annealing
+                all_samples = self.anneal_rms_Langevin_dynamics(samples, score, sigmas, n_steps, lr, beta, annealing)
             elif self.extra_args.sampler.lower() == 'adamald':
                 beta1 = self.extra_args.beta1
                 beta2 = self.extra_args.beta2
