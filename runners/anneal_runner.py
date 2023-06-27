@@ -255,6 +255,53 @@ class AnnealRunner():
                     #                                                          grad.abs().max()))
 
             return images
+        
+    def anneal_adam_Langevin_dynamics(self, x_mod, scorenet, sigmas, 
+                                      n_steps_each=100, 
+                                      step_lr=0.00002, 
+                                      beta1=0.99,
+                                      beta2=0.999,
+                                      naive=False):
+        images = []
+        
+        with torch.no_grad():
+            # moving average
+            m = torch.zeros_like(x_mod)
+            s = torch.zeros_like(x_mod)
+            counter = 0
+            
+            for c, sigma in tqdm.tqdm(enumerate(sigmas), total=len(sigmas), desc='annealed ADAM Langevin sampling'):
+                labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
+                labels = labels.long()
+                
+                # the schedule for annealing
+                step_size = step_lr * (sigma / sigmas[-1]) ** 2
+            
+                # sampling n_steps for each sigma/sigmas[-1]
+                for s in range(n_steps_each):
+                    # sample images at each step
+                    images.append(torch.clamp(x_mod, 0.0, 1.0).to('cpu'))
+                    noise = torch.randn_like(x_mod) * np.sqrt(step_size * 2)
+                    grad = scorenet(x_mod, labels)
+                    
+                    # moving average update
+                    m = beta1 * m + (1 - beta1) * (grad)
+                    s = beta2 * s + (1 - beta2) * (grad**2)
+                    
+                    # bais correction
+                    m_hat = m / (1 - beta1 ** (counter + 1))
+                    s_hat = s / (1 - beta2 ** (counter + 1))
+                    
+                    # update with preconditioning
+                    x_mod = x_mod + step_size * m_hat / torch.sqrt(s+1e-7) \
+                        + noise / torch.sqrt(torch.sqrt(s_hat+1e-7))
+                    # print("class: {}, step_size: {}, mean {}, max {}".format(c, step_size, grad.abs().mean(),
+                    #                                                          grad.abs().max()))
+
+                    if not naive:
+                        counter += 1
+                        
+            return images
 
 
     def test(self):
@@ -287,6 +334,12 @@ class AnnealRunner():
             elif self.extra_args.sampler.lower() == 'rmsald':
                 beta = self.extra_args.beta
                 all_samples = self.anneal_rms_Langevin_dynamics(samples, score, sigmas, n_steps, lr, beta)
+            elif self.extra_args.sampler.lower() == 'adamald':
+                beta1 = self.extra_args.beta1
+                beta2 = self.extra_args.beta2
+                naive = self.extra_args.naive
+                all_samples = self.anneal_adam_Langevin_dynamics(samples, score, sigmas, n_steps, 
+                                                                 lr, beta1, beta2, naive)
                 
             for i, sample in enumerate(tqdm.tqdm(all_samples, total=len(all_samples), desc='saving images')):
                 sample = sample.view(grid_size ** 2, self.config.data.channels, self.config.data.image_size,
