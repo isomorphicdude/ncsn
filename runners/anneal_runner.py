@@ -247,8 +247,10 @@ class AnnealRunner():
         if self.config.data.dataset == 'MNIST':
             samples = torch.rand(grid_size ** 2, 1, 28, 28, device=self.config.device)
             
-            n_steps = self.extra_args.n_steps if self.extra_args is not None else 100
-            lr = self.extra_args.lr if self.extra_args is not None else 0.00002
+            # n_steps = self.extra_args.n_steps if self.extra_args is not None else 100
+            # lr = self.extra_args.lr if self.extra_args is not None else 0.00002
+            n_steps = 100
+            lr = 0.00002
             
             all_samples = self.anneal_Langevin_dynamics(samples, score, sigmas, n_steps, lr)
 
