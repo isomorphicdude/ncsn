@@ -15,15 +15,16 @@ from torch.utils.data import DataLoader, Subset
 from datasets.celeba import CelebA
 from models.cond_refinenet_dilated import CondRefineNetDilated
 from torchvision.utils import save_image, make_grid
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 __all__ = ['AnnealRunner']
 
 
 class AnnealRunner():
-    def __init__(self, args, config):
+    def __init__(self, args, config, extra_args=None):
         self.args = args
         self.config = config
+        self.extra_args = extra_args
 
     def get_optimizer(self, parameters):
         if self.config.optim.optimizer == 'Adam':
@@ -207,8 +208,13 @@ class AnnealRunner():
             for c, sigma in tqdm.tqdm(enumerate(sigmas), total=len(sigmas), desc='annealed Langevin dynamics sampling'):
                 labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
                 labels = labels.long()
+                
+                # the schedule for annealing
                 step_size = step_lr * (sigma / sigmas[-1]) ** 2
+                
+                # sampling n_steps for each sigma/sigmas[-1]
                 for s in range(n_steps_each):
+                    # sample images at each step
                     images.append(torch.clamp(x_mod, 0.0, 1.0).to('cpu'))
                     noise = torch.randn_like(x_mod) * np.sqrt(step_size * 2)
                     grad = scorenet(x_mod, labels)
@@ -229,6 +235,7 @@ class AnnealRunner():
         if not os.path.exists(self.args.image_folder):
             os.makedirs(self.args.image_folder)
 
+        # the number of sigmas corresponds to the number of classes
         sigmas = np.exp(np.linspace(np.log(self.config.model.sigma_begin), np.log(self.config.model.sigma_end),
                                     self.config.model.num_classes))
 
@@ -236,9 +243,14 @@ class AnnealRunner():
         grid_size = 5
 
         imgs = []
+        # Only modified this MNIST part
         if self.config.data.dataset == 'MNIST':
             samples = torch.rand(grid_size ** 2, 1, 28, 28, device=self.config.device)
-            all_samples = self.anneal_Langevin_dynamics(samples, score, sigmas, 100, 0.00002)
+            
+            n_steps = self.extra_args.n_steps if self.extra_args.n_steps else 100
+            lr = self.extra_args.lr if self.extra_args.lr else 0.00002
+            
+            all_samples = self.anneal_Langevin_dynamics(samples, score, sigmas, n_steps, lr)
 
             for i, sample in enumerate(tqdm.tqdm(all_samples, total=len(all_samples), desc='saving images')):
                 sample = sample.view(grid_size ** 2, self.config.data.channels, self.config.data.image_size,
@@ -249,7 +261,10 @@ class AnnealRunner():
 
                 image_grid = make_grid(sample, nrow=grid_size)
                 if i % 10 == 0:
+                    # save images every 10 steps
                     im = Image.fromarray(image_grid.mul_(255).add_(0.5).clamp_(0, 255).permute(1, 2, 0).to('cpu', torch.uint8).numpy())
+                    # add title to image
+                    im = ImageDraw.Draw(im).text((0, 0), "step {}".format(i), (255, 0, 0))
                     imgs.append(im)
 
                 save_image(image_grid, os.path.join(self.args.image_folder, 'image_{}.png'.format(i)))
