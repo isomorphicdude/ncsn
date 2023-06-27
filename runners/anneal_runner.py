@@ -254,7 +254,11 @@ class AnnealRunner():
     #         return images
         
         
-    def anneal_rms_Langevin_dynamics(self, x_mod, scorenet, sigmas, n_steps_each=100, step_lr=0.00002, beta=0.99):
+    def anneal_rms_Langevin_dynamics(self, x_mod, scorenet, sigmas, 
+                                     n_steps_each=100, 
+                                     step_lr=0.00002, 
+                                     beta=0.99,
+                                     annealing=True):
         images = []
         
         with torch.no_grad():
@@ -266,7 +270,10 @@ class AnnealRunner():
                 labels = labels.long()
                 
                 # the schedule for annealing
-                step_size = step_lr * (sigma / sigmas[-1]) ** 2
+                if annealing:
+                    step_size = step_lr * (sigma / sigmas[-1]) ** 2
+                else:
+                    step_size = step_lr
             
                 # sampling n_steps for each sigma/sigmas[-1]
                 for s in range(n_steps_each):
