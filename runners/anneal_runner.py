@@ -223,6 +223,38 @@ class AnnealRunner():
                     #                                                          grad.abs().max()))
 
             return images
+        
+        
+    def anneal_rms_Langevin_dynamics(self, x_mod, scorenet, sigmas, n_steps_each=100, step_lr=0.00002, beta=0.99):
+        images = []
+        
+        with torch.no_grad():
+            # moving average
+            m = torch.zeros_like(x_mod)
+            
+            for c, sigma in tqdm.tqdm(enumerate(sigmas), total=len(sigmas), desc='annealed RMS Langevin sampling'):
+                labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
+                labels = labels.long()
+                
+                # the schedule for annealing
+                step_size = step_lr * (sigma / sigmas[-1]) ** 2
+            
+                # sampling n_steps for each sigma/sigmas[-1]
+                for s in range(n_steps_each):
+                    # sample images at each step
+                    images.append(torch.clamp(x_mod, 0.0, 1.0).to('cpu'))
+                    noise = torch.randn_like(x_mod) * np.sqrt(step_size * 2)
+                    grad = scorenet(x_mod, labels)
+                    
+                    # moving average update
+                    m = beta * m + (1 - beta) * (grad**2)
+                    
+                    # update with preconditioning
+                    x_mod = x_mod + step_size * grad / torch.sqrt(m+1e-7) + noise / torch.sqrt(torch.sqrt(m+1e-7))
+                    # print("class: {}, step_size: {}, mean {}, max {}".format(c, step_size, grad.abs().mean(),
+                    #                                                          grad.abs().max()))
+
+            return images
 
 
     def test(self):
@@ -247,13 +279,15 @@ class AnnealRunner():
         if self.config.data.dataset == 'MNIST':
             samples = torch.rand(grid_size ** 2, 1, 28, 28, device=self.config.device)
             
-            # n_steps = self.extra_args.n_steps if self.extra_args is not None else 100
-            # lr = self.extra_args.lr if self.extra_args is not None else 0.00002
-            n_steps = 100
-            lr = 0.00002
+            n_steps = self.extra_args.n_steps if self.extra_args.n_steps is not None else 100
+            lr = self.extra_args.lr if self.extra_args.lr is not None else 0.00002
             
-            all_samples = self.anneal_Langevin_dynamics(samples, score, sigmas, n_steps, lr)
-
+            if self.extra_args.sampler.lower() == 'ald':
+                all_samples = self.anneal_Langevin_dynamics(samples, score, sigmas, n_steps, lr)
+            elif self.extra_args.sampler.lower() == 'rmsald':
+                beta = self.extra_args.beta
+                all_samples = self.anneal_rms_Langevin_dynamics(samples, score, sigmas, n_steps, lr, beta)
+                
             for i, sample in enumerate(tqdm.tqdm(all_samples, total=len(all_samples), desc='saving images')):
                 sample = sample.view(grid_size ** 2, self.config.data.channels, self.config.data.image_size,
                                      self.config.data.image_size)
@@ -262,16 +296,13 @@ class AnnealRunner():
                     sample = torch.sigmoid(sample)
 
                 image_grid = make_grid(sample, nrow=grid_size)
-                image_grid = ImageOps.expand(image_grid, border=2, fill=(255, 255, 255))
-                image_grid = ImageDraw.Draw(image_grid)
-                font = ImageFont.truetype("arial.ttf", 20)
-                image_grid.text((0, 0), f'Iteration {i}', (0, 255, 255), font=font)
                 
                 if i % 10 == 0:
                     # save images every 10 steps
                     im = Image.fromarray(image_grid.mul_(255).add_(0.5).clamp_(0, 255).permute(1, 2, 0).to('cpu', torch.uint8).numpy())
                     imgs.append(im)
 
+                # image_grid.axes_all 
                 save_image(image_grid, os.path.join(self.args.image_folder, 'image_{}.png'.format(i)))
                 torch.save(sample, os.path.join(self.args.image_folder, 'image_raw_{}.pth'.format(i)))
 
@@ -296,7 +327,8 @@ class AnnealRunner():
                 save_image(image_grid, os.path.join(self.args.image_folder, 'image_{}.png'.format(i)), nrow=10)
                 torch.save(sample, os.path.join(self.args.image_folder, 'image_raw_{}.pth'.format(i)))
 
-        imgs[0].save(os.path.join(self.args.image_folder, "movie.gif"), save_all=True, append_images=imgs[1:], duration=1, loop=0)
+        # imgs[0].save(os.path.join(self.args.image_folder, "movie.gif"), save_all=True, append_images=imgs[1:], duration=1, loop=0)
+        imgs[0].save("movie.gif", save_all=True, append_images=imgs[1:], duration=1, loop=0)
 
     def anneal_Langevin_dynamics_inpainting(self, x_mod, refer_image, scorenet, sigmas, n_steps_each=100,
                                             step_lr=0.000008):
