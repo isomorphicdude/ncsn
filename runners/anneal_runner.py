@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader, Subset
 from datasets.celeba import CelebA
 from models.cond_refinenet_dilated import CondRefineNetDilated
 from torchvision.utils import save_image, make_grid
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 __all__ = ['AnnealRunner']
 
@@ -262,11 +262,14 @@ class AnnealRunner():
                     sample = torch.sigmoid(sample)
 
                 image_grid = make_grid(sample, nrow=grid_size)
+                image_grid = ImageOps.expand(image_grid, border=2, fill=(255, 255, 255))
+                image_grid = ImageDraw.Draw(image_grid)
+                font = ImageFont.truetype("arial.ttf", 20)
+                image_grid.text((0, 0), f'Iteration {i}', (0, 255, 255), font=font)
+                
                 if i % 10 == 0:
                     # save images every 10 steps
                     im = Image.fromarray(image_grid.mul_(255).add_(0.5).clamp_(0, 255).permute(1, 2, 0).to('cpu', torch.uint8).numpy())
-                    # add title to image
-                    im = ImageDraw.Draw(im).text((0, 0), "step {}".format(i), (255, 0, 0))
                     imgs.append(im)
 
                 save_image(image_grid, os.path.join(self.args.image_folder, 'image_{}.png'.format(i)))
