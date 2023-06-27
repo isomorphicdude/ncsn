@@ -224,34 +224,34 @@ class AnnealRunner():
 
             return images
         
-    def anneal_adagrad_Langevin_dynamics(self, x_mod, scorenet, sigmas, n_steps_each=100, step_lr=0.00002, beta=0.99):
-        images = []
+    # def anneal_adagrad_Langevin_dynamics(self, x_mod, scorenet, sigmas, n_steps_each=100, step_lr=0.00002, beta=0.99):
+    #     images = []
         
-        with torch.no_grad():
-            # moving average
-            m = torch.zeros_like(x_mod)
+    #     with torch.no_grad():
+    #         # moving average
+    #         m = torch.zeros_like(x_mod)
             
-            for c, sigma in tqdm.tqdm(enumerate(sigmas), total=len(sigmas), desc='annealed Adagrad Langevin sampling'):
-                labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
-                labels = labels.long()
+    #         for c, sigma in tqdm.tqdm(enumerate(sigmas), total=len(sigmas), desc='annealed Adagrad Langevin sampling'):
+    #             labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
+    #             labels = labels.long()
                 
-                # the schedule for annealing
-                step_size = step_lr * (sigma / sigmas[-1]) ** 2
+    #             # the schedule for annealing
+    #             step_size = step_lr * (sigma / sigmas[-1]) ** 2
             
-                # sampling n_steps for each sigma/sigmas[-1]
-                for s in range(n_steps_each):
-                    # sample images at each step
-                    images.append(torch.clamp(x_mod, 0.0, 1.0).to('cpu'))
-                    noise = torch.randn_like(x_mod) * np.sqrt(step_size * 2)
-                    grad = scorenet(x_mod, labels)
+    #             # sampling n_steps for each sigma/sigmas[-1]
+    #             for s in range(n_steps_each):
+    #                 # sample images at each step
+    #                 images.append(torch.clamp(x_mod, 0.0, 1.0).to('cpu'))
+    #                 noise = torch.randn_like(x_mod) * np.sqrt(step_size * 2)
+    #                 grad = scorenet(x_mod, labels)
                     
-                    # moving average update
-                    m += grad ** 2
+    #                 # moving average update
+    #                 m += grad ** 2
                     
-                    # update with preconditioning
-                    x_mod = x_mod + step_size * grad / torch.sqrt(m+1e-7) + noise / torch.sqrt(torch.sqrt(m+1e-7))
+    #                 # update with preconditioning
+    #                 x_mod = x_mod + step_size * grad / torch.sqrt(m+1e-7) + noise / torch.sqrt(torch.sqrt(m+1e-7))
 
-            return images
+    #         return images
         
         
     def anneal_rms_Langevin_dynamics(self, x_mod, scorenet, sigmas, n_steps_each=100, step_lr=0.00002, beta=0.99):
@@ -331,6 +331,38 @@ class AnnealRunner():
                         counter += 1
                         
             return images
+        
+    def anneal_nag_Langevin_dynamics(self, x_mod, scorenet, sigmas, 
+                                          n_steps_each=100, 
+                                          step_lr=0.00002, 
+                                          mu=0.9):# momentum coefficient in [0,1]
+        images = []
+        
+        with torch.no_grad():
+            # momentum accumulation
+            v = torch.zeros_like(x_mod)
+            
+            for c, sigma in tqdm.tqdm(enumerate(sigmas), total=len(sigmas), desc='annealed NAG Langevin sampling'):
+                labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
+                labels = labels.long()
+                
+                # the schedule for annealing
+                step_size = step_lr * (sigma / sigmas[-1]) ** 2
+            
+                # sampling n_steps for each sigma/sigmas[-1]
+                for s in range(n_steps_each):
+                    # sample images at each step
+                    images.append(torch.clamp(x_mod, 0.0, 1.0).to('cpu'))
+                    noise = torch.randn_like(x_mod) * np.sqrt(step_size * 2)
+                    grad = scorenet(x_mod, labels)
+                    
+                    # moving average update
+                    v = mu * v - step_size * grad
+                    
+                    # update with preconditioning
+                    x_mod = x_mod + v + noise
+
+            return images
 
 
     def test(self):
@@ -358,6 +390,7 @@ class AnnealRunner():
             n_steps = self.extra_args.n_steps if self.extra_args.n_steps is not None else 100
             lr = self.extra_args.lr if self.extra_args.lr is not None else 0.00002
             
+            # choosing the sampler
             if self.extra_args.sampler.lower() == 'ald':
                 all_samples = self.anneal_Langevin_dynamics(samples, score, sigmas, n_steps, lr)
             elif self.extra_args.sampler.lower() == 'rmsald':
@@ -369,8 +402,13 @@ class AnnealRunner():
                 naive = self.extra_args.naive
                 all_samples = self.anneal_adam_Langevin_dynamics(samples, score, sigmas, n_steps, 
                                                                  lr, beta1, beta2, naive)
-            elif self.extra_args.sampler.lower() == 'adagradald':
-                all_samples = self.anneal_adagrad_Langevin_dynamics(samples, score, sigmas, n_steps, lr)
+            elif self.extra_args.sampler.lower() == 'nagald':
+                mu = self.extra_args.mu
+                all_samples = self.anneal_nag_Langevin_dynamics(samples, score, sigmas, n_steps, lr, mu)
+            # elif self.extra_args.sampler.lower() == 'adagradald':
+            #     all_samples = self.anneal_adagrad_Langevin_dynamics(samples, score, sigmas, n_steps, lr)
+            
+            
                 
             for i, sample in enumerate(tqdm.tqdm(all_samples, total=len(all_samples), desc='saving images')):
                 sample = sample.view(grid_size ** 2, self.config.data.channels, self.config.data.image_size,
