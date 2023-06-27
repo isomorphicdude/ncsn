@@ -357,7 +357,7 @@ class AnnealRunner():
                     grad = scorenet(x_mod, labels)
                     
                     # moving average update
-                    v = mu * v - step_size * grad
+                    v = mu * v + step_size * grad
                     
                     # update with preconditioning
                     x_mod = x_mod + v + noise
