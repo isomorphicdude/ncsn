@@ -312,27 +312,44 @@ class AnnealRunner:
         images = []
 
         with torch.no_grad():
-            for c, sigma in tqdm.tqdm(
-                enumerate(sigmas),
-                total=len(sigmas),
-                desc="annealed Langevin dynamics sampling",
-            ):
-                labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
-                labels = labels.long()
-
-                if annealing:
+            if annealing:
+                for c, sigma in tqdm.tqdm(
+                    enumerate(sigmas),
+                    total=len(sigmas),
+                    desc="annealed Langevin dynamics sampling",
+                ):
+                    labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
+                    labels = labels.long()
+                    
                     # the schedule for annealing
                     step_size = step_lr * (sigma / sigmas[-1]) ** 2
-                else:
+
+                    # sampling n_steps for each sigma/sigmas[-1]
+                    for s in range(n_steps_each):
+                        # sample images at each step
+                        images.append(torch.clamp(x_mod, 0.0, 1.0).to("cpu"))
+                        noise = torch.randn_like(x_mod) * np.sqrt(step_size * 2)
+                        grad = scorenet(x_mod, labels)
+                        x_mod = x_mod + step_size * grad + noise
+            else:
+                for c, _ in tqdm.tqdm(
+                    enumerate(sigmas),
+                    total=len(sigmas),
+                    desc="annealed Langevin dynamics sampling",
+                ):
+                    labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
+                    labels = labels.long()
+                    
+                    # the schedule for annealing
                     step_size = step_lr
 
-                # sampling n_steps for each sigma/sigmas[-1]
-                for s in range(n_steps_each):
-                    # sample images at each step
-                    images.append(torch.clamp(x_mod, 0.0, 1.0).to("cpu"))
-                    noise = torch.randn_like(x_mod) * np.sqrt(step_size * 2)
-                    grad = scorenet(x_mod, labels)
-                    x_mod = x_mod + step_size * grad + noise
+                    # sampling n_steps for each sigma/sigmas[-1]
+                    for s in range(n_steps_each):
+                        # sample images at each step
+                        images.append(torch.clamp(x_mod, 0.0, 1.0).to("cpu"))
+                        noise = torch.randn_like(x_mod) * np.sqrt(step_size * 2)
+                        grad = scorenet(x_mod, labels)
+                        x_mod = x_mod + step_size * grad + noise
 
             return images
 
