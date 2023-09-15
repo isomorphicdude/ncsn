@@ -734,7 +734,7 @@ class AnnealRunner:
                 )
                 
             elif self.extra_args.sampler.lower() == "ald":
-                annealing = True
+                annealing = self.extra_args.annealing
                 all_samples = self.anneal_Langevin_dynamics(
                     samples, score, sigmas, n_steps, lr, annealing,
                 )
