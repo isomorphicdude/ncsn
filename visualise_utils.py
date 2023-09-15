@@ -27,6 +27,7 @@ def image_grid(x,
 
 
 def show_samples(x,
+                 ax,
                  size,
                  channels,
                  figsize=(6,6),
@@ -35,16 +36,14 @@ def show_samples(x,
 	if channels>3:
 		x = x.permute(0, 2, 3, 1).detach().cpu().numpy()
 		img = image_grid(x, size, channels, grid_size)
-		plt.figure(figsize=figsize)
-		plt.axis('off')
-		plt.title(name)
-		plt.imshow(img)
+		ax.axis('off')
+		ax.set_title(name)
+		ax.imshow(img)
 	else:
 		if grid_size[0] != grid_size[1]:
 			raise ValueError("Not square grid")
 
 		img = make_grid(x, nrow=grid_size[1])
-		plt.figure(figsize=figsize)
-		plt.axis('off')
-		plt.imshow(img.permute(1, 2, 0).cpu(), vmin=0., vmax=1.)
-		plt.show()
+		ax.axis('off')
+		ax.set_title(name)
+		ax.imshow(img.permute(1, 2, 0).cpu(), vmin=0., vmax=1.)
