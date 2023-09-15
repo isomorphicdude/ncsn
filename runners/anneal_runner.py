@@ -375,7 +375,8 @@ class AnnealRunner:
         beta=0.99,
         annealing=True,
         eps=1e-5,
-        use_scalar = False
+        use_scalar = False,
+        
     ):
         images = []
 
@@ -441,10 +442,15 @@ class AnnealRunner:
                             m = beta * m + (1 - beta) * torch.mean(grad**2)
 
                         # update with preconditioning
+                        # x_mod = (
+                        #     x_mod
+                        #     + step_size * grad / (torch.sqrt(m)+eps)
+                        #     + noise / torch.sqrt(torch.sqrt(m) + eps)
+                        # )
                         x_mod = (
                             x_mod
-                            + step_size * grad / (torch.sqrt(m)+eps)
-                            + noise / torch.sqrt(torch.sqrt(m) + eps)
+                            + step_size * grad / torch.clamp_min(torch.sqrt(m), eps)
+                            + noise / torch.clamp_min(torch.sqrt(torch.sqrt(m)), eps)
                         )
 
             return images
