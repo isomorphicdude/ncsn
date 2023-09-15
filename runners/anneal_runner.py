@@ -375,6 +375,7 @@ class AnnealRunner:
         beta=0.99,
         annealing=True,
         eps=1e-5,
+        use_scalar = False
     ):
         images = []
 
@@ -393,6 +394,7 @@ class AnnealRunner:
                     step_size = step_lr * (sigma / sigmas[-1]) ** 2
                     
                     m = torch.zeros_like(x_mod)
+                        
                     # sampling n_steps for each sigma/sigmas[-1]
                     for s in range(n_steps_each):
                         # sample images at each step
@@ -401,7 +403,10 @@ class AnnealRunner:
                         grad = scorenet(x_mod, labels)
 
                         # moving average update
-                        m = beta * m + (1 - beta) * (grad**2)
+                        if not use_scalar:
+                            m = beta * m + (1 - beta) * (grad**2)
+                        else:
+                            m = beta * m + (1 - beta) * torch.mean(grad**2)
 
                         # update with preconditioning
                         x_mod = (
@@ -430,7 +435,10 @@ class AnnealRunner:
                         grad = scorenet(x_mod, labels)
 
                         # moving average update
-                        m = beta * m + (1 - beta) * (grad**2)
+                        if not use_scalar:
+                            m = beta * m + (1 - beta) * (grad**2)
+                        else:
+                            m = beta * m + (1 - beta) * torch.mean(grad**2)
 
                         # update with preconditioning
                         x_mod = (
