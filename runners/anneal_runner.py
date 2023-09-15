@@ -335,7 +335,7 @@ class AnnealRunner:
                 for c, _ in tqdm.tqdm(
                     enumerate(sigmas),
                     total=len(sigmas),
-                    desc="annealed Langevin dynamics sampling",
+                    desc="Not annealed Langevin dynamics sampling",
                 ):
                     labels = torch.ones(x_mod.shape[0], device=x_mod.device) * c
                     labels = labels.long()
