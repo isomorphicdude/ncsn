@@ -740,6 +740,7 @@ class AnnealRunner:
             elif self.extra_args.sampler.lower() == "rmsald":
                 beta = self.extra_args.beta
                 annealing = self.extra_args.annealing
+                samples = torch.rand(grid_size**2, 3, 32, 32, device=self.config.device)
                 use_scalar = self.extra_args.use_scalar
                 all_samples = self.anneal_rms_Langevin_dynamics(
                     samples, score, sigmas, n_steps, lr, beta, annealing,
