@@ -731,11 +731,20 @@ class AnnealRunner:
             
         else:
             # Original sampling method with original hyperparameters
-            samples = torch.rand(grid_size**2, 3, 32, 32, device=self.config.device)
+            if self.extra_args.sampler.lower() == "ald":
+                samples = torch.rand(grid_size**2, 3, 32, 32, device=self.config.device)
 
-            all_samples = self.anneal_Langevin_dynamics(
-                samples, score, sigmas, 100, 0.00002
-            )
+                all_samples = self.anneal_Langevin_dynamics(
+                    samples, score, sigmas, 100, 0.00002
+                )
+            elif self.extra_args.sampler.lower() == "rmsald":
+                beta = self.extra_args.beta
+                annealing = self.extra_args.annealing
+                use_scalar = self.extra_args.use_scalar
+                all_samples = self.anneal_rms_Langevin_dynamics(
+                    samples, score, sigmas, n_steps, lr, beta, annealing,
+                    use_scalar=use_scalar
+                )
 
         # imgs[0].save(os.path.join(self.args.image_folder, "movie.gif"), save_all=True, append_images=imgs[1:], duration=1, loop=0)
         if save:
