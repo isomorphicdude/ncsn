@@ -730,17 +730,18 @@ class AnnealRunner:
             #     all_samples = self.anneal_adagrad_Langevin_dynamics(samples, score, sigmas, n_steps, lr)
             
         else:
-            # Original sampling method with original hyperparameters
+            samples = torch.rand(grid_size**2, 3, 32, 32, device=self.config.device)
+            n_steps = (
+                self.extra_args.n_steps if self.extra_args.n_steps is not None else 100
+            )
+            lr = self.extra_args.lr if self.extra_args.lr is not None else 0.00002
             if self.extra_args.sampler.lower() == "ald":
-                samples = torch.rand(grid_size**2, 3, 32, 32, device=self.config.device)
-
                 all_samples = self.anneal_Langevin_dynamics(
                     samples, score, sigmas, 100, 0.00002
                 )
             elif self.extra_args.sampler.lower() == "rmsald":
                 beta = self.extra_args.beta
                 annealing = self.extra_args.annealing
-                samples = torch.rand(grid_size**2, 3, 32, 32, device=self.config.device)
                 use_scalar = self.extra_args.use_scalar
                 all_samples = self.anneal_rms_Langevin_dynamics(
                     samples, score, sigmas, n_steps, lr, beta, annealing,
