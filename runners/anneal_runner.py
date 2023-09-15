@@ -735,9 +735,10 @@ class AnnealRunner:
                 self.extra_args.n_steps if self.extra_args.n_steps is not None else 100
             )
             lr = self.extra_args.lr if self.extra_args.lr is not None else 0.00002
+            
             if self.extra_args.sampler.lower() == "ald":
                 all_samples = self.anneal_Langevin_dynamics(
-                    samples, score, sigmas, 100, 0.00002
+                    samples, score, sigmas, n_steps, lr, annealing=self.extra_args.annealing,
                 )
             elif self.extra_args.sampler.lower() == "rmsald":
                 beta = self.extra_args.beta
