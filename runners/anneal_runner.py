@@ -19,11 +19,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 __all__ = ["AnnealRunner"]
 
-
-def set_grid(size):
-    global GRID_SIZE
-    GRID_SIZE = size
-
+GRID_SIZE = 8
 
 class AnnealRunner:
     def __init__(self, args, config, extra_args=None):
@@ -682,7 +678,7 @@ class AnnealRunner:
         )
 
         score.eval()
-        grid_size = GRID_SIZE
+        grid_size = kwargs.get("grid_size", GRID_SIZE)
 
         imgs = []
         # Only modified this MNIST part
