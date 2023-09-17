@@ -652,6 +652,8 @@ class AnnealRunner:
 
     #         return images
 
+
+
     #NOTE: Modify this to return samples
     def test(self, save=False, **kwargs):
         """Return all samples."""
