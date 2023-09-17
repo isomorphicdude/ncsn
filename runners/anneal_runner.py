@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 __all__ = ["AnnealRunner"]
 
-GRID_SIZE = 5
+GRID_SIZE = 8
 
 
 class AnnealRunner:

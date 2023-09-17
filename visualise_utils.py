@@ -4,11 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 
+from runners.anneal_runner import GRID_SIZE
 
 def image_grid(x,
                size,
                channels,
-               grid_size=None): # a tuple of integers
+               grid_size=(GRID_SIZE, GRID_SIZE)): # a tuple of integers
 	# size = config.data.image_size
 	# channels = config.data.num_channels
 	img = x.reshape(-1, size, size, channels)
@@ -32,7 +33,7 @@ def show_samples(x,
                  channels,
                  figsize=(6,6),
                  name="Samples",
-                 grid_size=None):
+                 grid_size=(GRID_SIZE, GRID_SIZE)):
 	if channels>3:
 		x = x.permute(0, 2, 3, 1).detach().cpu().numpy()
 		img = image_grid(x, size, channels, grid_size)
