@@ -19,7 +19,10 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 __all__ = ["AnnealRunner"]
 
-GRID_SIZE = 8
+
+def set_grid(size):
+    global GRID_SIZE
+    GRID_SIZE = size
 
 
 class AnnealRunner:
