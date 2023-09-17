@@ -748,7 +748,7 @@ class AnnealRunner:
             #     all_samples = self.anneal_adagrad_Langevin_dynamics(samples, score, sigmas, n_steps, lr)
             
         else:
-            print(grid_size)
+            # print(grid_size)
             samples = torch.rand(grid_size**2, 3, 32, 32, device=self.config.device)
             n_steps = (
                 self.extra_args.n_steps if self.extra_args.n_steps is not None else 100
